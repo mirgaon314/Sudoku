@@ -1,0 +1,10 @@
+numpy
+pandas
+pytorch
+torch
+torchvision
+opencv-python  # For image processing (optional)
+matplotlib
+jupyter  # For notebooks
+scikit-learn
+tqdm  # Progress bars
