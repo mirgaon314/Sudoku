@@ -1,0 +1,81 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_sudoku(grid, title="Sudoku"):
+    """
+    Visualizes a Sudoku grid using matplotlib.
+
+    Args:
+        grid (numpy.ndarray): A 9x9 Sudoku grid (0 represents empty cells).
+        title (str): Title of the plot.
+    """
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.set_xlim(0, 9)
+    ax.set_ylim(0, 9)
+    ax.set_xticks(np.arange(0, 10, 1))
+    ax.set_yticks(np.arange(0, 10, 1))
+    ax.grid(which="both", color="black", linewidth=2)
+    ax.set_title(title, fontsize=16)
+
+    # Draw thicker lines for 3x3 subgrids
+    for i in range(0, 10, 3):
+        ax.axhline(i, color="black", linewidth=4)
+        ax.axvline(i, color="black", linewidth=4)
+
+    # Fill in the numbers
+    for i in range(9):
+        for j in range(9):
+            if grid[i][j] != 0:
+                ax.text(j + 0.5, 8.5 - i, str(grid[i][j]),
+                        fontsize=16, ha="center", va="center")
+
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    # plt.show()
+
+def visualize(puzzle):
+    """
+    Visualizes both the Sudoku puzzle
+
+    Args:
+        puzzle (numpy.ndarray): A 9x9 Sudoku puzzle grid.
+    """
+    plt.figure(figsize=(12, 6))
+
+    # Plot puzzle
+    plt.subplot(1, 2, 1)
+    plot_sudoku(puzzle, title="Sudoku Puzzle")
+
+    plt.tight_layout()
+    plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    # Example puzzle and solution (replace with your data)
+    puzzle = np.array([
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 7, 9]
+    ])
+
+    solution = np.array([
+        [5, 3, 4, 6, 7, 8, 9, 1, 2],
+        [6, 7, 2, 1, 9, 5, 3, 4, 8],
+        [1, 9, 8, 3, 4, 2, 5, 6, 7],
+        [8, 5, 9, 7, 6, 1, 4, 2, 3],
+        [4, 2, 6, 8, 5, 3, 7, 9, 1],
+        [7, 1, 3, 9, 2, 4, 8, 5, 6],
+        [9, 6, 1, 5, 3, 7, 2, 8, 4],
+        [2, 8, 7, 4, 1, 9, 6, 3, 5],
+        [3, 4, 5, 2, 8, 6, 1, 7, 9]
+    ])
+
+    # Visualize puzzle and solution
+    visualize(puzzle)
+    visualize(solution)
