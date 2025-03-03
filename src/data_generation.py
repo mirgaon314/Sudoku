@@ -90,11 +90,10 @@ def generate_3x3_diagonal_box(board):
                     if check_valid(board, box*3 + i, box*3 + j, num):
                         board[box*3 + i][box*3 + j] = num
 
-def backtrack_solve(board, find_unique=False): # brute-force method
+def backtrack_solve(board, find_unique=False):
     for i in range(9):
         for j in range(9):
             if board[i][j] == 0:
-                # randomize because it is also used for generating solution
                 num_list = valid_numbers(board, i, j)
                 random.shuffle(num_list)
                 for num in num_list:
@@ -102,7 +101,6 @@ def backtrack_solve(board, find_unique=False): # brute-force method
                         board[i][j] = num
                         if backtrack_solve(board):
                             return True
-                        # return into 0 when the recursion didn't work
                         board[i][j] = 0
                 return False
     return True
@@ -139,8 +137,6 @@ def find_unavoidable_sets(board):
                             for row in (row_1,row_2) 
                             for st, col in zip((st_1, st_2), (col_1, col_2))]
                     values = [board[row][col] for row, col in cells]
-                    # Debug: Print cells and values
-                    # print(f"Checking cells: {cells} with values: {values}")
                     if not has_paired_values(values):
                         continue
                     # Check all permutations of the values in these cells
@@ -236,7 +232,6 @@ def generate_sudoku_solution():
     return board
 
 def generate_sudoku_puzzle(solution,difficulty):
-    board = np.zeros((9,9),dtype = int)
     num_clues = {
         Difficulty.EASY: 38,
         Difficulty.MEDIUM: 30,
@@ -244,25 +239,26 @@ def generate_sudoku_puzzle(solution,difficulty):
         Difficulty.EXPERT: 0  # based on the number of unavoidable sets
     }
     curr_clues = 0
-
+    board = np.zeros((9,9),dtype = int)
     # first, use at least one element from each unavoidable sets for unique solution
     unavoid_set = find_unavoidable_sets(solution)
     for sets in unavoid_set:
-        num = random.randint(0,len(sets)-1)
-        row, col = sets[num]
-        if board[row][col] == 0:
-            board[row][col] = solution[row][col]
-            curr_clues += 1
-
-    # need to be worked
+        check = 0
+        while check == 0:
+            num = random.randint(0,len(sets)-1)
+            row, col = sets[num]
+            if board[row][col] == 0:
+                board[row][col] = solution[row][col]
+                curr_clues += 1
+                check = 1
 
     while curr_clues < num_clues[difficulty]:
         row, col = np.random.randint(0, 9), np.random.randint(0, 9)
         if board[row][col] == 0:
             board[row][col] = solution[row][col]
             curr_clues += 1
-    
     return board
+        
 
 if __name__ == "__main__":
     ex_solution = generate_sudoku_solution()
@@ -279,13 +275,14 @@ if __name__ == "__main__":
         [5, 6, 2, 1, 8, 4, 7, 3, 9],
         [9, 1, 8, 5, 7, 3, 2, 6, 4]
     ])
-    '''
     unavoidable_sets = find_unavoidable_sets(ex_solution)
     # visualize(ex_solution)
     print("Unavoidable Sets:")
     for idx, u_set in enumerate(unavoidable_sets, start=1):
         print(f"Set {idx}: {u_set}")
-        
-    visualize(ex_solution, title="Sudoku Solution with Unavoidable Sets Highlighted", unavoidable_sets = unavoidable_sets)
+    '''
+
+    # visualize(ex_solution, title="Sudoku Solution with Unavoidable Sets Highlighted", unavoidable_sets = unavoidable_sets)
+
     visualize(ex_puzzle)
 
