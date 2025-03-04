@@ -1,28 +1,60 @@
 import numpy as np
 import pandas as pd
-from utils.visualization import visualize
+from utils.visualization import visualize_multiple
 import random
 from enum import Enum
 from itertools import combinations
 from itertools import permutations
 from itertools import product
 from collections import Counter
+import json
+import csv
+import os
+from datetime import datetime
+import copy
+from z3 import *
 
 class Difficulty(Enum):
     EASY = 1
     MEDIUM = 2
     HARD = 3
-    EXPERT = 4
 
-def read_data(): # Load a CSV dataset
-    data_directory_path = (
-        f"../data/"
-    )
-    data = pd.read_csv(data_directory_path + "sudoku.csv")
-    puzzles = data["puzzle"].apply(lambda x: [int(c) for c in x]).tolist()
-    solutions = data["solution"].apply(lambda x: [int(c) for c in x]).tolist()
+def flatten_grid(grid):
+    """Convert a 9x9 grid to a string."""
+    return "".join(str(cell) for row in grid for cell in row)
 
-    return puzzles, solutions
+def unflatten_grid(flat_str):
+    """Convert a string back to a 9x9 grid."""
+    return [list(map(int, flat_str[i*9:(i+1)*9])) for i in range(9)]
+
+def serialize_sets(unavoidable_sets):
+    """Convert unavoidable sets to a JSON string."""
+    return json.dumps([[[r, c] for (r, c) in s] for s in unavoidable_sets])
+
+def deserialize_sets(json_str):
+    """Convert JSON string back to unavoidable sets."""
+    # Assume json_str is like: '[[[row, col], [row, col]], [[row, col], ...]]'
+    sets_list = json.loads(json_str)
+    return [set(tuple(cell) for cell in s) for s in sets_list]
+
+def read_data(filename="../Sudoku/data/sudoku_data.csv"):
+    puzzles = []
+    solutions = []
+    metadata = []
+    
+    with open(filename, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            puzzles.append(unflatten_grid(row["puzzle"]))
+            solutions.append(unflatten_grid(row["solution"]))
+            metadata.append({
+                "difficulty": row["difficulty"],
+                "clues": int(row["clues"]),
+                "date": row["date_generated"],
+                "unavoidable_sets": deserialize_sets(row["unavoidable_sets"])
+            })
+    
+    return puzzles, solutions, metadata
 
 def check_valid(board, row, col, num):
     # check row and column if the number exist
@@ -90,20 +122,39 @@ def generate_3x3_diagonal_box(board):
                     if check_valid(board, box*3 + i, box*3 + j, num):
                         board[box*3 + i][box*3 + j] = num
 
-def backtrack_solve(board, find_unique=False):
-    for i in range(9):
-        for j in range(9):
-            if board[i][j] == 0:
-                num_list = valid_numbers(board, i, j)
-                random.shuffle(num_list)
-                for num in num_list:
-                    if check_valid(board, i, j, num):
-                        board[i][j] = num
-                        if backtrack_solve(board):
-                            return True
-                        board[i][j] = 0
-                return False
-    return True
+def backtrack_solve(board, return_board=False):
+    """
+    Backtracking solver for Sudoku.
+    
+    If return_board is False (default), the function returns True when a solution is found,
+    modifying the board in place.
+    
+    If return_board is True, the function first makes a deep copy of the board,
+    solves it, and returns the solved copy without altering the original board.
+    """
+    def _solve(b):
+        for i in range(9):
+            for j in range(9):
+                if b[i][j] == 0:
+                    num_list = valid_numbers(b, i, j)
+                    random.shuffle(num_list)
+                    for num in num_list:
+                        if check_valid(b, i, j, num):
+                            b[i][j] = num
+                            _solve(b)
+                            b[i][j] = 0
+                    return False
+        return b if return_board else True
+
+    if return_board:
+        # Create a deep copy to preserve the original board.
+        board_copy = copy.deepcopy(board)
+        result = _solve(board_copy)
+        if result is not None:
+            return result
+        return board_copy
+    else:
+        return _solve(board)
 
 def has_paired_values(values):
     """Check if the values are paired for size-4, size-6 sets, size-9 sets."""
@@ -231,58 +282,222 @@ def generate_sudoku_solution():
     backtrack_solve(board)
     return board
 
-def generate_sudoku_puzzle(solution,difficulty):
-    num_clues = {
+def greedy_hitting_set_with_heuristics(unavoidable_sets):
+    """
+    Given a list of unavoidable sets (each as an iterable of cell tuples),
+    compute a greedy hitting set that integrates additional heuristics.
+    
+    For each candidate cell, we add bonus points if its row, column, or block is
+    not yet covered by the current hitting set.
+    
+    Returns:
+        A set of cells (tuples) that form the hitting set.
+    """
+    # Make a working copy of unavoidable sets as sets.
+    uncovered = [set(uset) for uset in unavoidable_sets]
+    hitting_clues = set()
+    covered_rows = set()
+    covered_cols = set()
+    covered_blocks = set()
+    
+    while uncovered:
+        # Count frequency of each cell in uncovered unavoidable sets.
+        freq = {}
+        for uset in uncovered:
+            for cell in uset:
+                freq[cell] = freq.get(cell, 0) + 1
+        
+        best_cell = None
+        best_score = -1
+        # Evaluate each candidate cell with extra bonuses.
+        for cell, base in freq.items():
+            i, j = cell
+            bonus = 0
+            if i not in covered_rows:
+                bonus += 1
+            if j not in covered_cols:
+                bonus += 1
+            block = (i // 3, j // 3)
+            if block not in covered_blocks:
+                bonus += 1
+            score = base + bonus
+            if score > best_score:
+                best_score = score
+                best_cell = cell
+        # Add best_cell to the hitting set.
+        hitting_clues.add(best_cell)
+        i, j = best_cell
+        covered_rows.add(i)
+        covered_cols.add(j)
+        covered_blocks.add((i // 3, j // 3))
+        # Remove all unavoidable sets that are hit by best_cell.
+        uncovered = [uset for uset in uncovered if best_cell not in uset]
+    return hitting_clues
+
+def count_solutions(board, limit=2):
+    """
+    Count solutions using backtracking but stop as soon as the count reaches `limit`.
+    Returns the number of solutions found (up to the limit).
+    """
+    s = Solver()
+    # Create a 9x9 matrix of Int variables.
+    X = [[Int(f"x_{i}_{j}") for j in range(9)] for i in range(9)]
+    
+    # Each cell must be between 1 and 9; add fixed-cell constraints.
+    for i in range(9):
+        for j in range(9):
+            s.add(And(X[i][j] >= 1, X[i][j] <= 9))
+            if board[i][j] != 0:
+                s.add(X[i][j] == int(board[i][j]))
+    
+    # Rows must have distinct values.
+    for i in range(9):
+        s.add(Distinct(X[i]))
+    
+    # Columns must have distinct values.
+    for j in range(9):
+        s.add(Distinct([X[i][j] for i in range(9)]))
+    
+    # Each 3x3 block must have distinct values.
+    for block_i in range(3):
+        for block_j in range(3):
+            block = [X[i][j] for i in range(block_i*3, block_i*3+3) 
+                              for j in range(block_j*3, block_j*3+3)]
+            s.add(Distinct(block))
+    
+    count = 0
+    while count < limit and s.check() == sat:
+        count += 1
+        m = s.model()
+        # Extract the solution.
+        sol = [[m.evaluate(X[i][j]).as_long() for j in range(9)] for i in range(9)]
+        # Add a constraint to block this solution.
+        s.add(Or([X[i][j] != sol[i][j] for i in range(9) for j in range(9)]))
+    return count
+
+
+
+def generate_sudoku_puzzle(solution, difficulty):
+    target_clues = {
         Difficulty.EASY: 38,
         Difficulty.MEDIUM: 30,
-        Difficulty.HARD: 23,
-        Difficulty.EXPERT: 0  # based on the number of unavoidable sets
-    }
-    curr_clues = 0
-    board = np.zeros((9,9),dtype = int)
-    # first, use at least one element from each unavoidable sets for unique solution
-    unavoid_set = find_unavoidable_sets(solution)
-    for sets in unavoid_set:
-        check = 0
-        while check == 0:
-            num = random.randint(0,len(sets)-1)
-            row, col = sets[num]
-            if board[row][col] == 0:
-                board[row][col] = solution[row][col]
-                curr_clues += 1
-                check = 1
-
-    while curr_clues < num_clues[difficulty]:
-        row, col = np.random.randint(0, 9), np.random.randint(0, 9)
-        if board[row][col] == 0:
-            board[row][col] = solution[row][col]
+        Difficulty.HARD: 23
+    }[difficulty]
+    while True:
+        # 1. Compute unavoidable sets.
+        unavoidable_sets = find_unavoidable_sets(solution)
+        # 2. Compute a greedy hitting set with extra heuristics.
+        hitting_clues = greedy_hitting_set_with_heuristics(unavoidable_sets)
+        
+        # 3. Start with an empty board.
+        board = np.zeros((9, 9), dtype=int)
+        curr_clues = 0
+        # Place clues from the hitting set.
+        for (i, j) in hitting_clues:
+            board[i][j] = solution[i][j]
             curr_clues += 1
-    return board
+        
+        # 4. Ensure every row is covered.
+        for i in range(9):
+            if np.count_nonzero(board[i, :]) == 0:
+                j = random.randint(0, 8)
+                board[i][j] = solution[i][j]
+                curr_clues += 1
+        # Ensure every column is covered.
+        for j in range(9):
+            if np.count_nonzero(board[:, j]) == 0:
+                i = random.randint(0, 8)
+                board[i][j] = solution[i][j]
+                curr_clues += 1
+        # Ensure every 3×3 block is covered.
+        for block_row in range(3):
+            for block_col in range(3):
+                block = board[block_row*3:(block_row+1)*3, block_col*3:(block_col+1)*3]
+                if np.count_nonzero(block) == 0:
+                    i = random.randint(0, 2)
+                    j = random.randint(0, 2)
+                    board[block_row*3 + i][block_col*3 + j] = solution[block_row*3 + i][block_col*3 + j]
+                    curr_clues += 1
+        
+        # 5. Build a weight matrix for remaining empty cells.
+        weights = np.zeros((9, 9))
+        for uset in unavoidable_sets:
+            for (r, c) in uset:
+                weights[r][c] += 1
+        # Add extra bonus weight for rows and columns with few clues.
+        for i in range(9):
+            if np.count_nonzero(board[i, :]) < 2:
+                for j in range(9):
+                    weights[i][j] += 0.5
+        for j in range(9):
+            if np.count_nonzero(board[:, j]) < 2:
+                for i in range(9):
+                    weights[i][j] += 0.5
+                    
+        # Sort empty cells by weight (high-to-low).
+        empty_cells = [(i, j) for i in range(9) for j in range(9) if board[i][j] == 0]
+        empty_cells.sort(key=lambda pos: weights[pos[0]][pos[1]], reverse=True)
+        
+        # 6. Fill extra clues until target clue count is reached.
+        for (i, j) in empty_cells:
+            if curr_clues >= target_clues:
+                break
+            if board[i][j] == 0:
+                board[i][j] = solution[i][j]
+                curr_clues += 1
+                
+        if count_solutions(board, limit=2) == 1:
+            return board
+
+
+
+
+def generate_and_save_puzzle(difficulty, filename="../Sudoku/data/sudoku_data.csv"):
+    # Ensure that the target directory exists.
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+    # Generate puzzle and solution
+    solution = generate_sudoku_solution()
+    puzzle = generate_sudoku_puzzle(solution, difficulty)
+    unavoidable_sets = find_unavoidable_sets(solution)
+    
+    # Prepare data: flatten_grid and serialize_sets should be defined elsewhere in your code.
+    data = {
+        "puzzle": flatten_grid(puzzle),
+        "solution": flatten_grid(solution),
+        "unavoidable_sets": serialize_sets(unavoidable_sets),
+        "difficulty": difficulty.name,
+        "clues": np.count_nonzero(puzzle),
+        "date_generated": datetime.now().isoformat()
+    }
+    
+    # Append to CSV in the specified file path.
+    with open(filename, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=data.keys())
+        if f.tell() == 0:  # Write header only once if file is empty.
+            writer.writeheader()
+        writer.writerow(data)
         
 
 if __name__ == "__main__":
-    ex_solution = generate_sudoku_solution()
-    ex_puzzle = generate_sudoku_puzzle(ex_solution, Difficulty.HARD)
-    '''
-    ex_solution = np.array([
-        [6, 8, 5, 4, 3, 1, 9, 7, 2],
-        [2, 9, 7, 8, 6, 5, 4, 1, 3],
-        [3, 4, 1, 7, 2, 9, 5, 8, 6],
-        [7, 3, 9, 2, 1, 6, 8, 4, 5],
-        [1, 5, 6, 9, 4, 8, 3, 2, 7],
-        [8, 2, 4, 3, 5, 7, 6, 9, 1],
-        [4, 7, 3, 6, 9, 2, 1, 5, 8],
-        [5, 6, 2, 1, 8, 4, 7, 3, 9],
-        [9, 1, 8, 5, 7, 3, 2, 6, 4]
-    ])
-    unavoidable_sets = find_unavoidable_sets(ex_solution)
-    # visualize(ex_solution)
-    print("Unavoidable Sets:")
-    for idx, u_set in enumerate(unavoidable_sets, start=1):
-        print(f"Set {idx}: {u_set}")
-    '''
+    # Generate and save 10 Hard puzzles
+    
+    for _ in range(10):
+        generate_and_save_puzzle(Difficulty.HARD)
+    
+    # Load and inspect data
+    puzzles, solutions, metadata = read_data()
+    counter = [0]
+    solved = backtrack_solve(puzzles[2],return_board=True)
+    
+    visualize_multiple([puzzles[2],solved, solutions[2]], titles=["Puzzle", "solved", "Solution"], unavoidable_sets_list = [None, None, metadata[2]["unavoidable_sets"]])
+    
+    # print(puzzles[2] == solutions[2])
 
+    '''
+    print(f"Loaded {len(puzzles)} puzzles.")
+    print("First puzzle's unavoidable sets:", metadata[0]["unavoidable_sets"])
+    '''
     # visualize(ex_solution, title="Sudoku Solution with Unavoidable Sets Highlighted", unavoidable_sets = unavoidable_sets)
 
-    visualize(ex_puzzle)
 

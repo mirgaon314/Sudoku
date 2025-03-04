@@ -7,4 +7,5 @@ matplotlib
 jupyter  # For notebooks
 scikit-learn
 tqdm  # Progress bars
+z3-solver
 # pip install -r requirements.txt
