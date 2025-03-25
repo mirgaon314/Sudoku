@@ -37,6 +37,7 @@ def deserialize_sets(json_str):
     sets_list = json.loads(json_str)
     return [set(tuple(cell) for cell in s) for s in sets_list]
 
+'''
 def read_data(filename="../Sudoku/data/sudoku_data.csv"):
     puzzles = []
     solutions = []
@@ -55,6 +56,23 @@ def read_data(filename="../Sudoku/data/sudoku_data.csv"):
             })
     
     return puzzles, solutions, metadata
+'''
+
+def read_data(filename="../Sudoku/data/sudoku.csv", num = 1):
+    quizzes = np.zeros((1000000, 81), np.int32)
+    solutions = np.zeros((1000000, 81), np.int32)
+    count = 0
+    for i, line in enumerate(open("../Sudoku/data/sudoku.csv", 'r').read().splitlines()[1:]):
+        if(count == num): break
+        count += 1
+        quiz, solution = line.split(",")
+        for j, q_s in enumerate(zip(quiz, solution)):
+            q, s = q_s
+            quizzes[i, j] = q
+            solutions[i, j] = s
+    quizzes = quizzes.reshape((-1, 9, 9))
+    solutions = solutions.reshape((-1, 9, 9))
+    return quizzes, solutions
 
 def check_valid(board, row, col, num):
     # check row and column if the number exist
@@ -448,8 +466,6 @@ def generate_sudoku_puzzle(solution, difficulty):
                 
         if count_solutions(board, limit=2) == 1:
             return board
-
-
 
 
 def generate_and_save_puzzle(difficulty, filename="../Sudoku/data/sudoku_data.csv"):
