@@ -8,4 +8,5 @@ jupyter  # For notebooks
 scikit-learn
 tqdm  # Progress bars
 z3-solver
+tensorflow
 # pip install -r requirements.txt

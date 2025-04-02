@@ -35,3 +35,6 @@ https://machinelearningmastery.com/tutorial-first-neural-network-python-keras/
 Implement the keras example on your own computer
 Adjust that model slightly (more layers, ect…)
 Format the sudoku input puzzles as 1D numpy arrays. A function that takes in the input sudoku from your data set, and gives back a 1D version
+
+https://www.heatonresearch.com/2017/06/01/hidden-layers.html
+https://stackoverflow.com/questions/52485608/how-to-choose-the-number-of-hidden-layers-and-nodes

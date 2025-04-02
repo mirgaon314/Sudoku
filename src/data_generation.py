@@ -59,8 +59,8 @@ def read_data(filename="../Sudoku/data/sudoku_data.csv"):
 '''
 
 def read_data(filename="../Sudoku/data/sudoku.csv", num = 1):
-    quizzes = np.zeros((1000000, 81), np.int32)
-    solutions = np.zeros((1000000, 81), np.int32)
+    quizzes = np.zeros((num, 81), np.int32)
+    solutions = np.zeros((num, 81), np.int32)
     count = 0
     for i, line in enumerate(open("../Sudoku/data/sudoku.csv", 'r').read().splitlines()[1:]):
         if(count == num): break
