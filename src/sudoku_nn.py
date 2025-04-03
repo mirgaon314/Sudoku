@@ -17,7 +17,7 @@ def train(puzzle, solution):
     # Define the Keras model.
     model = Sequential()
     model.add(Dense(81, input_shape=(81,), activation='relu'))
-    model.add(Dense(2, activation='sigmoid'))
+    model.add(Dense(27, activation='relu'))
     model.add(Dense(27, activation='relu'))
     model.add(Dense(9, activation='relu'))
     # Output layer: predict 9 classes (0-8) for each of the 81 cells.
@@ -35,7 +35,7 @@ def train(puzzle, solution):
     # Evaluate the model on the test data.
     loss, accuracy = model.evaluate(X_test, y_test)
     print('Test Accuracy: %.2f' % (accuracy * 100))
-    keras.saving.save_model(model, "C:/Users/Gaon Park/Documents/git/Sudoku/models/model_1.keras")
+    model.save("C:/Users/Gaon Park/Documents/git/Sudoku/models/model_1.keras")
 
 
 
