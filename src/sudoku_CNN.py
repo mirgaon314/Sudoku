@@ -1,5 +1,5 @@
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Reshape, Input
+from tensorflow.keras import layers, Model
+from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, Dropout, Reshape
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from data_generation import read_data
@@ -31,18 +31,48 @@ def curriculum_train(puzzle, solution, n_values = (0,44,46,48,50,52), epochs_per
 
     # build or reuse model
     if base_model is None:
-        model = Sequential([
-            Input((81,)),
-            Dense(81, activation='relu'),
-            Dense(27, activation='relu'),
-            Dense(27, activation='relu'),
-            Dense(9, activation='relu'),
-            Dense(81*9, activation='softmax'),
-            Reshape((81,9))
-        ])
-        model.compile(loss='sparse_categorical_crossentropy',
-                      optimizer=Adam(),
-                      metrics=['accuracy'])
+        # 1) Input: a single‑channel 9×9 “image”
+        inp = layers.Input(shape=(9, 9, 1))
+
+        # 2) Initial conv to expand to 64 features
+        x = layers.Conv2D(64, 3, padding="same", use_bias=False)(inp)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+
+        # 3) Four Residual blocks at full resolution
+        def res_block(x):
+            shortcut = x
+            x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
+            x = layers.BatchNormalization()(x)
+            x = layers.Activation("relu")(x)
+            x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
+            x = layers.BatchNormalization()(x)
+            return layers.Add()([shortcut, x])
+
+        for _ in range(4):
+            x = res_block(x)
+
+        # 4) Bottleneck conv to build bigger receptive field
+        x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+
+        # 5) Dropout for regularization
+        x = layers.Dropout(0.3)(x)
+
+        # 6) Final 1×1 conv → 9 feature maps (one per digit class), softmax per cell
+        x = layers.Conv2D(9, 1, padding="same", activation="softmax")(x)
+
+        # 7) Reshape to (81 cells, 9 classes)
+        out = layers.Reshape((81, 9))(x)
+
+        model = Model(inp, out)
+        model.compile(
+            loss="sparse_categorical_crossentropy",
+            optimizer=Adam(learning_rate=1e-3, decay=1e-5),
+            metrics=["accuracy"]
+        )
+        model.summary()
         print("→ New model created")
     else:
         model = base_model
@@ -63,7 +93,9 @@ def curriculum_train(puzzle, solution, n_values = (0,44,46,48,50,52), epochs_per
             Ys.append(generate_smaller(p, s, k).reshape(81))
             Xs.append(p.reshape(81))
 
-        Xs = np.vstack(Xs)
+        # reshape test puzzles into 9×9×1 images
+        Xs = np.vstack(Xs).astype('float32')
+        Xs = Xs.reshape(-1, 9, 9, 1)
         raw_labels = np.vstack(Ys)
         # convert 1–9→0–8, blanks stay 0
         y_stage = np.where(raw_labels>0, raw_labels-1, 0)
@@ -96,7 +128,7 @@ if __name__ == "__main__":
                              epochs_per_stage=10,
                              batch_size=32,
                              base_model=None,
-                             model_path="models/model_curriculum.keras")
+                             model_path="models/model_1.keras")
 
     # Option 2: Continue training an existing model.
     # For example, uncomment the following if you want to use a pre-saved model:

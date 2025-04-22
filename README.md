@@ -38,3 +38,24 @@ Format the sudoku input puzzles as 1D numpy arrays. A function that takes in the
 
 https://www.heatonresearch.com/2017/06/01/hidden-layers.html
 https://stackoverflow.com/questions/52485608/how-to-choose-the-number-of-hidden-layers-and-nodes
+
+
+44: 57
+45: 12662 
+46: 198940
+47: 455004
+48: 263913
+49: 61122 
+50: 7748  
+51: 526   
+52: 28
+
+44: 5
+45: 1291
+46: 19981
+47: 45218
+48: 26548
+49: 6139
+50: 771
+51: 44
+52: 3
