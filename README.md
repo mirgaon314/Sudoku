@@ -51,3 +51,22 @@ https://medium.com/aiguys/curriculum-learning-83b1b2221f33
 
 Convolutional Neural Networks
 cnn or gnn
+44: 57
+45: 12662 
+46: 198940
+47: 455004
+48: 263913
+49: 61122 
+50: 7748  
+51: 526   
+52: 28
+
+44: 5
+45: 1291
+46: 19981
+47: 45218
+48: 26548
+49: 6139
+50: 771
+51: 44
+52: 3

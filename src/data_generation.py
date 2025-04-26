@@ -70,8 +70,15 @@ def read_data(filename="../Sudoku/data/sudoku.csv", num = 1):
             q, s = q_s
             quizzes[i, j] = q
             solutions[i, j] = s
+    
     quizzes = quizzes.reshape((-1, 9, 9))
     solutions = solutions.reshape((-1, 9, 9))
+
+    # empty_per_puzzle = np.sum(quizzes == 0, axis=(1, 2))
+    # # build histogram
+    # hist = Counter(empty_per_puzzle)
+    # for empties in sorted(hist):
+    #     print(f"{empties}: {hist[empties]}")
     return quizzes, solutions
 
 def check_valid(board, row, col, num):
