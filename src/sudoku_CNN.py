@@ -109,6 +109,7 @@ def curriculum_train(puzzle, solution, n_values = (0,44,46,48,50,52), epochs_per
         print(f"→ Stage {stage} train acc: {acc*100:.2f}%")
 
     # final test eval
+    X_test = X_test.reshape(-1, 9, 9, 1)
     loss, acc = model.evaluate(X_test, y_test, verbose=1)
     print(f"\n*** Final Test Accuracy: {acc*100:.2f}% ***")
 
