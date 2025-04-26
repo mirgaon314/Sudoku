@@ -27,6 +27,9 @@ https://blog.paperspace.com/beginners-guide-to-boltzmann-machines-pytorch/
 # Sudoku database
 https://www.kaggle.com/datasets/bryanpark/sudoku?resource=download
 
+# 9 million
+https://www.kaggle.com/datasets/rohanrao/sudoku
+
 
 # this week work
 https://medium.com/data-science/first-neural-network-for-beginners-explained-with-code-4cfd37e06eaf
@@ -38,3 +41,13 @@ Format the sudoku input puzzles as 1D numpy arrays. A function that takes in the
 
 https://www.heatonresearch.com/2017/06/01/hidden-layers.html
 https://stackoverflow.com/questions/52485608/how-to-choose-the-number-of-hidden-layers-and-nodes
+
+
+1. Write a program/function that creates minus N puzzles
+2. Use 100K of N=1 puzzles and figure out a NN system that solves it
+3.  Scale up to 10 million puzzles and see if that same NN system does
+
+https://medium.com/aiguys/curriculum-learning-83b1b2221f33
+
+Convolutional Neural Networks
+cnn or gnn
