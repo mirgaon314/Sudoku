@@ -33,10 +33,11 @@ This project focuses on creating a Sudoku puzzle generator and developing two ty
 - Used datas
   - 1 million sudoku database
   - https://www.kaggle.com/datasets/bryanpark/sudoku?resource=download
-  - (graph)
+  - <img width="421" alt="Image" src="https://github.com/user-attachments/assets/b2d78c89-e1b2-4d82-a13e-62f6b8657cdd" />
  
   - 9 million sudoku database
   - https://www.kaggle.com/datasets/rohanrao/sudoku
+  - <img width="460" alt="Image" src="https://github.com/user-attachments/assets/ec7d9632-f121-4b32-87a0-1a51db6692c2" />
 
 
 
