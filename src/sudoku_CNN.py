@@ -35,27 +35,22 @@ def curriculum_train(puzzle, solution, n_values = (0,44,46,48,50,52), epochs_per
         inp = layers.Input(shape=(9, 9, 1))
 
         # 2) Initial conv to expand to 64 features
-        x = layers.Conv2D(64, 3, padding="same", use_bias=False)(inp)
+        x = layers.Conv2D(32, (3,3), padding="same", dilation_rate= 1, use_bias=False)(inp)
         x = layers.BatchNormalization()(x)
         x = layers.Activation("relu")(x)
 
-        # 3) Four Residual blocks at full resolution
-        def res_block(x):
-            shortcut = x
-            x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
-            x = layers.BatchNormalization()(x)
-            x = layers.Activation("relu")(x)
-            x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
-            x = layers.BatchNormalization()(x)
-            return layers.Add()([shortcut, x])
-
-        for _ in range(4):
-            x = res_block(x)
+        x = layers.Conv2D(64, (3,3), padding="same", dilation_rate= 2, use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
 
         # 4) Bottleneck conv to build bigger receptive field
-        x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
+        x = layers.Conv2D(128, (3,3), padding="same", dilation_rate= 4, use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.Activation("relu")(x)
+
+        # x = layers.Conv2D(256, (3,3), padding="same", dilation_rate= 4, use_bias=False)(x)
+        # x = layers.BatchNormalization()(x)
+        # x = layers.Activation("relu")(x)
 
         # 5) Dropout for regularization
         x = layers.Dropout(0.3)(x)
@@ -104,7 +99,7 @@ def curriculum_train(puzzle, solution, n_values = (0,44,46,48,50,52), epochs_per
         model.fit(Xs, y_stage,
                   epochs=epochs_per_stage,
                   batch_size=batch_size,
-                  verbose=1)
+                  shuffle=True, verbose=1)
         loss, acc = model.evaluate(Xs, y_stage, verbose=0)
         print(f"→ Stage {stage} train acc: {acc*100:.2f}%")
 
@@ -120,16 +115,16 @@ def curriculum_train(puzzle, solution, n_values = (0,44,46,48,50,52), epochs_per
 
 if __name__ == "__main__":
     # Load data from your CSV file.
-    puzzle, solution = read_data("../Sudoku/data/sudoku.csv", 1000000)
+    puzzle, solution = read_data("../Sudoku/data/sudoku_9mil.csv", 9000000)
 
     # Option 1: Train a model from scratch.
-    curriculum = [44, 46, 48, 50, 52]
+    curriculum = [0, 44, 46, 48, 50, 52]
     model = curriculum_train(puzzle, solution,
                              n_values=curriculum,
                              epochs_per_stage=10,
                              batch_size=32,
                              base_model=None,
-                             model_path="models/model_1.keras")
+                             model_path="models/model_2.keras")
 
     # Option 2: Continue training an existing model.
     # For example, uncomment the following if you want to use a pre-saved model:
